@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>互動測試</title>
+<pre id="result">測試中…</pre><iframe id="game" src="../dist/index.html" hidden></iframe>
+<script>
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const out=document.querySelector('#result'),frame=document.querySelector('#game');
+frame.addEventListener('load',async()=>{
+  const d=frame.contentDocument,results=[];
+  const hold=async el=>{el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,pointerType:'touch'}));await sleep(3100);el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,button:0,pointerType:'touch'}));};
+  d.querySelector('#teacherBtn').click();await sleep(100);results.push(['短按教師不開啟',!d.querySelector('#teacherScreen').classList.contains('active')]);
+  await hold(d.querySelector('#teacherBtn'));results.push(['長按教師3秒開啟',d.querySelector('#teacherScreen').classList.contains('active')]);
+  d.querySelector('#cancelSettings').click();d.querySelector('.start-btn').click();await sleep(100);
+  d.querySelector('#homeBtn').click();await sleep(100);results.push(['短按主選單不開啟',d.querySelector('#gameScreen').classList.contains('active')]);
+  await hold(d.querySelector('#homeBtn'));results.push(['長按主選單3秒開啟',d.querySelector('#menuScreen').classList.contains('active')]);
+  out.textContent=results.map(([n,ok])=>`${ok?'通過':'失敗'}：${n}`).join('\n');
+});
+</script>

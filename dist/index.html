@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#06245c">
+  <meta name="description" content="為香港特殊學校學生設計的按數取量及序數巴士站遊戲">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23ffd800'/%3E%3Cpath d='M9 18h46v29H9zM15 23h12v10H15zm22 0h12v10H37z' fill='%2306245c'/%3E%3Ccircle cx='19' cy='49' r='6' fill='%2306245c'/%3E%3Ccircle cx='45' cy='49' r='6' fill='%2306245c'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <title>巴士站數學遊戲</title>
+</head>
+<body data-theme="navy-white" data-font="large">
+  <a class="skip-link" href="#main">跳到主要內容</a>
+  <div id="app">
+    <header class="topbar">
+      <button id="homeBtn" class="icon-btn protected-nav hidden" type="button" aria-label="長按三秒返回主選單">⌂<span>主選單<small>長按3秒</small></span></button>
+      <div class="brand"><span class="brand-bus" aria-hidden="true">▰</span> 巴士站數學遊戲</div>
+      <button id="teacherBtn" class="icon-btn protected-nav" type="button" aria-label="長按三秒開啟教師專區">⚙<span>教師<small>長按3秒</small></span></button>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <section id="menuScreen" class="screen active" aria-labelledby="menuTitle">
+        <div class="menu-scene" aria-hidden="true">
+          <img class="menu-bus" src="assets/bus.png" alt="">
+          <img class="menu-stop" src="assets/bus-stop.png" alt="">
+        </div>
+        <h1 id="menuTitle">今日玩邊一種？</h1>
+        <div class="mode-grid">
+          <article class="mode-card">
+            <div class="mode-letter" aria-hidden="true">A</div>
+            <h2>按數取量</h2>
+            <p>叫啱數量嘅乘客上車</p>
+            <div class="difficulty-row" aria-label="選擇按數取量難度">
+              <button class="start-btn" data-mode="cardinal" data-difficulty="easy">簡單</button>
+              <button class="start-btn" data-mode="cardinal" data-difficulty="normal">普通</button>
+              <button class="start-btn" data-mode="cardinal" data-difficulty="hard">困難</button>
+            </div>
+          </article>
+          <article class="mode-card">
+            <div class="mode-letter" aria-hidden="true">B</div>
+            <h2>序數</h2>
+            <p>搵出第幾個乘客</p>
+            <div class="difficulty-row" aria-label="選擇序數難度">
+              <button class="start-btn" data-mode="ordinal" data-difficulty="easy">簡單</button>
+              <button class="start-btn" data-mode="ordinal" data-difficulty="normal">普通</button>
+              <button class="start-btn" data-mode="ordinal" data-difficulty="hard">困難</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="gameScreen" class="screen" aria-labelledby="questionText">
+        <div class="game-hud">
+          <div class="question-block">
+            <div id="directionLabel" class="direction hidden">由左開始 <span aria-hidden="true">→</span></div>
+            <h1 id="questionText">要上車：1個</h1>
+            <div id="currentCount" class="count-readout">已上車：0個</div>
+          </div>
+          <button id="repeatBtn" class="repeat-btn select-target" type="button">🔊 <span>重聽</span></button>
+          <div id="roundProgress" class="round-progress" aria-label="題目進度">第 1 / 5 題</div>
+        </div>
+
+        <div id="playArea" class="play-area">
+          <div id="busWrap" class="bus-wrap" aria-hidden="true">
+            <img id="busImage" src="assets/bus.png" alt="">
+            <div id="busDoor" class="bus-door"></div>
+          </div>
+          <img class="bus-stop" src="assets/bus-stop.png" alt="巴士站牌">
+          <div id="passengerGrid" class="passenger-grid" role="group" aria-label="乘客選擇區"></div>
+          <div id="cameraCue" class="camera-cue hidden" aria-live="polite"><span aria-hidden="true">◉</span> 鏡頭由左至右數乘客 <b aria-hidden="true">→</b></div>
+          <div id="liveMessage" class="live-message" role="status" aria-live="polite"></div>
+        </div>
+
+        <div id="nextRoundPanel" class="next-panel hidden">
+          <div id="successMessage" class="success-message"></div>
+          <button id="nextRoundBtn" class="primary-btn select-target" type="button">下一題 <span aria-hidden="true">→</span></button>
+        </div>
+      </section>
+
+      <section id="teacherScreen" class="screen" aria-labelledby="teacherTitle">
+        <div class="teacher-heading">
+          <div><p class="eyebrow">教師專區</p><h1 id="teacherTitle">遊戲設定</h1></div>
+          <button id="viewResultsBtn" class="secondary-btn" type="button">查看學習紀錄</button>
+        </div>
+        <form id="settingsForm" class="settings-grid">
+          <fieldset><legend>模式</legend><div class="choice-row"><label><input type="radio" name="mode" value="cardinal" checked> 按數取量</label><label><input type="radio" name="mode" value="ordinal"> 序數</label></div></fieldset>
+          <fieldset><legend>難度</legend><div class="choice-row"><label><input type="radio" name="difficulty" value="easy" checked> 簡單</label><label><input type="radio" name="difficulty" value="normal"> 普通</label><label><input type="radio" name="difficulty" value="hard"> 困難</label></div></fieldset>
+          <fieldset class="span-2"><legend>數字範圍</legend><div class="choice-row wrap"><label><input type="radio" name="range" value="5"> 1–5</label><label><input type="radio" name="range" value="10" checked> 1–10</label><label><input type="radio" name="range" value="15"> 1–15</label><label><input type="radio" name="range" value="20"> 1–20</label><label><input type="radio" name="range" value="custom"> 自訂</label><label class="inline-number">最小 <input id="minNumber" type="number" min="1" max="20" value="1"></label><label class="inline-number">最大 <input id="maxNumber" type="number" min="1" max="20" value="10"></label></div></fieldset>
+          <fieldset><legend>操作方式</legend><div class="choice-row wrap"><label><input type="radio" name="inputMode" value="touch" checked> 觸控</label><label><input type="radio" name="inputMode" value="gaze"> 眼動</label><label><input type="radio" name="inputMode" value="both"> 觸控＋眼動</label></div></fieldset>
+          <fieldset><legend>眼動注視確認時間</legend><label class="range-control"><output id="dwellOutput">1.0 秒</output><input id="dwellTime" type="range" min="0.2" max="3" step="0.1" value="1"></label><button id="dwellTest" class="dwell-test select-target" type="button">注視測試區<span class="dwell-hint">凝視到圓環完成</span></button></fieldset>
+          <fieldset><legend>高對比配色</legend><select id="themeSelect"><option value="white-black">白底黑字</option><option value="black-white">黑底白字</option><option value="black-yellow">黑底黃字</option><option value="navy-white" selected>深藍底白字</option></select></fieldset>
+          <fieldset><legend>字體／數字大小</legend><select id="fontSize"><option value="large" selected>大</option><option value="xlarge">特大</option><option value="xxlarge">最大</option></select></fieldset>
+          <fieldset><legend>語音速度</legend><label class="range-control"><output id="speechOutput">正常</output><input id="speechRate" type="range" min="0.6" max="1.1" step="0.1" value="0.8"></label></fieldset>
+          <fieldset><legend>動畫速度</legend><select id="animationSpeed"><option value="slow">慢</option><option value="normal" selected>正常</option><option value="fast">快</option></select><label class="toggle"><input id="reduceMotion" type="checkbox"> 減少動畫</label></fieldset>
+          <fieldset><legend>序數頭頂提示</legend><select id="ordinalLabels"><option value="all" selected>全部序號</option><option value="anchors">部分錨點</option><option value="none">無序號</option></select></fieldset>
+          <fieldset><legend>每局題數</legend><div class="choice-row"><label><input type="radio" name="rounds" value="5" checked> 5</label><label><input type="radio" name="rounds" value="10"> 10</label><label><input type="radio" name="rounds" value="custom"> 自訂</label><input id="customRounds" type="number" min="1" max="20" value="5" aria-label="自訂題數"></div></fieldset>
+          <div class="form-actions span-2"><button id="saveSettings" class="primary-btn" type="submit">儲存並開始</button><button id="cancelSettings" class="secondary-btn" type="button">返回主選單</button></div>
+        </form>
+      </section>
+
+      <section id="resultsScreen" class="screen" aria-labelledby="resultsTitle">
+        <div class="teacher-heading"><div><p class="eyebrow">教師專區</p><h1 id="resultsTitle">學習紀錄</h1></div><div class="result-actions"><button id="exportBtn" class="secondary-btn" type="button">下載 CSV</button><button id="clearBtn" class="danger-btn" type="button">清除紀錄</button></div></div>
+        <div id="summaryCards" class="summary-grid"></div>
+        <div class="table-wrap"><table><thead><tr><th>日期</th><th>模式</th><th>範圍</th><th>目標</th><th>首次選擇</th><th>結果</th><th>使用提示</th></tr></thead><tbody id="resultsBody"></tbody></table></div>
+        <button id="resultsBackBtn" class="primary-btn" type="button">返回設定</button>
+      </section>
+    </main>
+  </div>
+  <template id="dwellRingTemplate"><span class="dwell-ring" aria-hidden="true"><svg viewBox="0 0 44 44"><circle class="ring-track" cx="22" cy="22" r="18"></circle><circle class="ring-progress" cx="22" cy="22" r="18"></circle></svg></span></template>
+  <script src="app.js"></script>
+</body>
+</html>
