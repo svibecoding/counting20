@@ -101,7 +101,7 @@
   function duration(base){ if(state.settings.reduceMotion)return 20; const scale={slow:1.45,normal:1,fast:.65}[state.settings.animationSpeed]||1; return base*scale; }
   function announce(text){ const live=$('#liveMessage'); if(!live)return; live.textContent=text;live.classList.add('show');clearTimeout(liveTimer);liveTimer=setTimeout(()=>live.classList.remove('show'),4200); }
   function showScreen(id){ hold.cancel();$$('.screen').forEach(s=>s.classList.toggle('active',s.id===id)); $('#homeBtn').classList.toggle('hidden',id==='menuScreen'); $('#teacherBtn').classList.toggle('hidden',id==='teacherScreen'||id==='resultsScreen'); window.scrollTo(0,0); $('#main').focus({preventScroll:true}); }
-  function applyPreferences(){ document.body.dataset.theme=state.settings.theme;document.body.dataset.font=state.settings.fontSize;document.body.classList.toggle('reduced-motion',state.settings.reduceMotion);voice.setRate(state.settings.speechRate);input.configure(state.settings.inputMode,state.settings.dwellTime);document.documentElement.style.setProperty('--dur',`${duration(600)}ms`); }
+  function applyPreferences(){ document.body.dataset.theme=state.settings.theme;document.body.dataset.font=state.settings.fontSize;document.documentElement.dataset.font=state.settings.fontSize;document.body.classList.toggle('reduced-motion',state.settings.reduceMotion);voice.setRate(state.settings.speechRate);input.configure(state.settings.inputMode,state.settings.dwellTime);document.documentElement.style.setProperty('--dur',`${duration(600)}ms`); }
 
   function beginGame(mode,difficulty){
     state.settings.mode=mode;state.settings.difficulty=difficulty;saveSettings();applyPreferences();state.round=0;state.records=[];showScreen('gameScreen');nextRound();
@@ -123,7 +123,7 @@
   function shouldShowOrdinalLabel(i){ const pref=state.settings.ordinalLabels; return pref==='all'||(pref==='anchors'&&(i===1||i===5||i===10||i===15||i===20)); }
 
   async function setupCardinal(){
-    $('#directionLabel').classList.add('hidden');$('#currentCount').classList.remove('hidden');$('#questionText').textContent=`要上車：${state.target}個`;$('#currentCount').textContent='已上車：0個';
+    $('#questionText').classList.remove('ordinal-question');$('#directionLabel').classList.add('hidden');$('#currentCount').classList.remove('hidden');$('#questionText').textContent=`要上車：${state.target}個`;$('#currentCount').textContent='已上車：0個';
     const grid=$('#passengerGrid');grid.className='passenger-grid';grid.innerHTML='';
     const displayCount=Math.max(state.target,Math.min(20,state.settings.max));
     for(let i=1;i<=displayCount;i++){const p=makePassenger(i);grid.appendChild(p);input.bind(p,()=>selectCardinal(i,p));}
@@ -145,12 +145,17 @@
   function markNext(withHint=false){$$('.passenger').forEach(p=>p.classList.remove('next-hint'));const next=$(`.passenger[data-index="${state.count+1}"]`);if(next&&withHint)next.classList.add('next-hint');}
 
   async function setupOrdinal(){
-    $('#directionLabel').classList.remove('hidden');$('#currentCount').classList.add('hidden');$('#questionText').textContent=`第 ${state.target} 個`;const grid=$('#passengerGrid');grid.innerHTML='';
+    $('#questionText').classList.add('ordinal-question');$('#directionLabel').classList.remove('hidden');$('#currentCount').classList.add('hidden');$('#questionText').textContent=`第 ${state.target} 個`;const grid=$('#passengerGrid');grid.innerHTML='';
     voice.promptOrdinal(state.target);if(state.settings.difficulty==='hard')setupOrdinalHard();else await setupOrdinalPeople();
   }
   function setupOrdinalHard(){
     const grid=$('#passengerGrid');grid.className='passenger-grid dot-grid';const total=state.target<=10?10:20;
     for(let i=1;i<=total;i++){const b=document.createElement('button');b.type='button';b.className='dot-target';b.dataset.index=i;b.setAttribute('aria-label',`由左開始，位置${i}`);b.innerHTML='<span class="dot" aria-hidden="true"></span>';grid.appendChild(b);input.bind(b,()=>selectOrdinal(i,b));}
+  }
+  function consecutiveOrdinalCandidates(target,total=20){
+    // Vary the answer's position while keeping every candidate adjacent and in range.
+    const start=randInt(Math.max(1,target-2),Math.min(target,total-2));
+    return [start,start+1,start+2];
   }
   async function setupOrdinalPeople(){
     const grid=$('#passengerGrid');grid.className=`passenger-grid ordinal-${state.settings.difficulty} ordinal-tour`;const cue=$('#cameraCue');cue.classList.remove('hidden');
@@ -168,9 +173,7 @@
     if(state.settings.difficulty==='easy'){
       const neighbor=state.target===1?2:state.target===total?state.target-1:(Math.random()<.5?state.target-1:state.target+1);candidates=[state.target,neighbor].sort((a,b)=>a-b);
     }else{
-      const pool=[];for(let i=Math.max(1,state.target-2);i<=Math.min(total,state.target+2);i++)if(i!==state.target)pool.push(i);
-      while(pool.length<2){const n=randInt(1,total);if(n!==state.target&&!pool.includes(n))pool.push(n);}
-      candidates=[state.target,...pool.sort(()=>Math.random()-.5).slice(0,2)].sort((a,b)=>a-b);
+      candidates=consecutiveOrdinalCandidates(state.target,total);
     }
     grid.classList.add('tour-fade');await wait(state.settings.reduceMotion?10:300);cue.classList.add('hidden');grid.className=`passenger-grid ordinal-${state.settings.difficulty} ordinal-final`;grid.style.cssText=`--candidate-count:${candidates.length}`;
     state.ordinalCandidates=candidates;all.forEach((p,i)=>{p.classList.toggle('inactive',!candidates.includes(i+1));if(candidates.includes(i+1)){p.tabIndex=0;p.removeAttribute('aria-disabled');input.bind(p,()=>selectOrdinal(i+1,p));}});
@@ -219,10 +222,10 @@
     $('#cancelSettings').addEventListener('click',()=>showScreen('menuScreen'));$('#settingsForm').addEventListener('submit',e=>{e.preventDefault();state.settings=readSettingsForm();saveSettings();applyPreferences();beginGame(state.settings.mode,state.settings.difficulty);});
     $('#dwellTime').addEventListener('input',e=>{$('#dwellOutput').value=`${Number(e.target.value).toFixed(1)} 秒`;input.configure($('#settingsForm').elements.inputMode.value,Number(e.target.value));input.bind($('#dwellTest'),()=>{announce('注視成功！');voice.say('注視成功！');});});
     $('#settingsForm').elements.inputMode.forEach(r=>r.addEventListener('change',()=>{input.configure(r.form.elements.inputMode.value,Number($('#dwellTime').value));input.bind($('#dwellTest'),()=>{announce('注視成功！');voice.say('注視成功！');});}));
-    $('#speechRate').addEventListener('input',updateSpeechOutput);$('#themeSelect').addEventListener('change',e=>document.body.dataset.theme=e.target.value);$('#fontSize').addEventListener('change',e=>document.body.dataset.font=e.target.value);
+    $('#speechRate').addEventListener('input',updateSpeechOutput);$('#themeSelect').addEventListener('change',e=>document.body.dataset.theme=e.target.value);$('#fontSize').addEventListener('change',e=>{document.body.dataset.font=e.target.value;document.documentElement.dataset.font=e.target.value;});
     $('#viewResultsBtn').addEventListener('click',()=>{renderResults();showScreen('resultsScreen');});$('#resultsBackBtn').addEventListener('click',openTeacher);$('#exportBtn').addEventListener('click',exportCsv);$('#clearBtn').addEventListener('click',()=>{if(confirm('確定清除所有學習紀錄？')){localStorage.removeItem('busMathRecords');renderResults();}});
   }
 
-  window.__BUS_GAME__={NUMBERS,DEFAULTS,input,hold,state,beginGame,nextRound,setTarget(n){state.target=clamp(Number(n),1,20);},getRecords:loadRecords,duration};
+  window.__BUS_GAME__={NUMBERS,DEFAULTS,input,hold,state,beginGame,nextRound,setTarget(n){state.target=clamp(Number(n),1,20);},getRecords:loadRecords,duration,consecutiveOrdinalCandidates};
   bindStaticUI();applyPreferences();showScreen('menuScreen');
 })();
