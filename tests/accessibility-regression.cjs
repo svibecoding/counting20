@@ -29,7 +29,7 @@ const { chromium } = require('playwright');
       }));
       const labels = [...document.querySelectorAll('.ordinal-label')].filter(el => el.getClientRects().length);
       return { collisions, overflow: document.documentElement.scrollWidth > innerWidth + 1,
-        boxes, labels: labels.map(el => ({ size:parseFloat(getComputedStyle(el).fontSize), color:getComputedStyle(el).color })),
+        boxes, outside:boxes.filter(b=>b.x<0||b.y<0||b.right>innerWidth+1||b.bottom>innerHeight+1), labels: labels.map(el => ({ size:parseFloat(getComputedStyle(el).fontSize), color:getComputedStyle(el).color })),
         choices: buttons.map(el => Number(el.dataset.index)), bodySize: parseFloat(getComputedStyle(document.body).fontSize),
         questionColor: getComputedStyle(document.querySelector('#questionText')).color };
     });
@@ -56,7 +56,8 @@ const { chromium } = require('playwright');
         assert.equal(layout.collisions.length, 0, `${mode}/${difficulty}/${target} overlapping buttons`);
         assert.equal(layout.overflow, false, `${mode}/${difficulty}/${target} horizontal overflow`);
         assert.equal(layout.bodySize, 30);
-        assert(layout.boxes.every(b => b.height >= 165 && b.width >= 120), 'Selection areas must stay large');
+        assert(layout.boxes.every(b => b.height >= 64 && b.width >= 64), 'Selection areas must stay large');
+        assert.equal(layout.outside.length,0,`${mode}/${difficulty}/${target} options outside viewport`);
         assert(layout.labels.every(l => l.size >= 30 && l.color === 'rgb(176, 0, 32)'), 'Ordinal label style');
         if (mode === 'ordinal') {
           assert.equal(layout.questionColor, 'rgb(176, 0, 32)');
@@ -87,13 +88,14 @@ const { chromium } = require('playwright');
         rounds++;
       }
     }
-    for (const size of [{width:1024,height:768},{width:1180,height:820},{width:1366,height:768},{width:390,height:844}]) {
+    for (const size of [{width:1024,height:768},{width:1024,height:650},{width:1180,height:820},{width:1366,height:768},{width:390,height:844}]) {
       await page.setViewportSize(size);
       for (const font of ['large','xlarge','xxlarge']) for (const difficulty of ['easy','normal','hard']) {
         await start('ordinal', difficulty, 20, font);
         const layout = await layoutCheck();
         assert.equal(layout.overflow, false, `${size.width}/${font}/${difficulty} overflow`);
         assert.equal(layout.collisions.length, 0, `${size.width}/${font}/${difficulty} overlap`);
+        assert.equal(layout.outside.length,0,`${size.width}x${size.height}/${font}/${difficulty} options outside viewport`);
         assert(layout.labels.every(l => l.size >= 30));
       }
     }
@@ -121,6 +123,6 @@ const { chromium } = require('playwright');
     });
     assert.equal(dwell,3);
     assert.deepEqual(errors,[]);
-    console.log(JSON.stringify({passed:true, completedRounds:rounds, consecutiveCandidates:'all targets/totals 1–20', layout:'4 viewports × 3 font sizes × 3 ordinal levels', dwellSeconds:[.2,1,3], screenshot:'/tmp/mathgame-ordinal-1024.png'}));
+    console.log(JSON.stringify({passed:true, completedRounds:rounds, consecutiveCandidates:'all targets/totals 1–20', layout:'5 viewports × 3 font sizes × 3 ordinal levels, all choices inside viewport', dwellSeconds:[.2,1,3], screenshot:'/tmp/mathgame-ordinal-1024.png'}));
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1});

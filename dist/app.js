@@ -92,6 +92,65 @@
   const hold=new HoldManager(3);
   const state={settings:loadSettings(),round:0,target:1,count:0,firstChoice:null,usedHint:false,firstCorrect:true,records:[],busy:false,ordinalCandidates:[]};
   let liveTimer=0;
+  let recordPage=0;
+  let layoutScheduled=false;
+
+  function requestLayout(){
+    if(layoutScheduled)return;
+    layoutScheduled=true;
+    requestAnimationFrame(()=>{layoutScheduled=false;fitScreenToViewport();});
+  }
+  function fitScreenToViewport(){
+    const viewportHeight=window.visualViewport?.height||window.innerHeight;
+    const viewportWidth=window.visualViewport?.width||window.innerWidth;
+    // On unusually short displays, retain a complete 650px-high layout and fit it as a unit.
+    const frameScale=Math.min(1,viewportHeight/650);
+    document.documentElement.style.setProperty('--app-height',`${viewportHeight/frameScale}px`);
+    document.documentElement.style.setProperty('--app-width',`${viewportWidth/frameScale}px`);
+    document.documentElement.style.setProperty('--app-scale',frameScale);
+    const screen=$('.screen.active');if(!screen||screen.id==='teacherScreen')return;
+    if(screen.id!=='gameScreen'){
+      // Menu/results use their natural layout; fit the complete panel only when needed.
+      screen.style.transform='none';
+      const scale=Math.min(1,Math.max(1,$('#main').clientHeight-2)/Math.max(1,screen.scrollHeight));
+      screen.style.transform=scale<1?`scale(${scale})`:'none';
+      return;
+    }
+    const grid=$('#passengerGrid'),buttons=$$('button',grid).filter(b=>!b.classList.contains('inactive'));
+    if(!buttons.length)return;
+    const gap=parseFloat(getComputedStyle(grid).columnGap)||12;
+    const width=grid.clientWidth,height=grid.clientHeight;
+    if(grid.classList.contains('ordinal-tour')){
+      grid.style.setProperty('--tour-face-size',`${Math.max(32,Math.min(141,height-82))}px`);
+    }else{
+      let columns,rows,face;
+      if(grid.classList.contains('dot-grid')){columns=5;rows=buttons.length/5;}
+      else if(grid.classList.contains('ordinal-final')){columns=buttons.length;rows=1;}
+      else{
+        let best=-Infinity;
+        for(let c=1;c<=Math.min(10,buttons.length);c++){
+          const r=Math.ceil(buttons.length/c),w=(width-gap*(c-1))/c,h=(height-gap*(r-1))/r;
+          const size=Math.min(111,w-16,h-16);
+          if(size>best){best=size;columns=c;rows=r;}
+        }
+      }
+      grid.style.setProperty('--selection-columns',columns);
+      grid.style.setProperty('--selection-rows',rows);
+      const cellWidth=(width-gap*(columns-1))/columns,cellHeight=(height-gap*(rows-1))/rows;
+      face=Math.min(grid.classList.contains('ordinal-final')?240:111,cellWidth-(grid.classList.contains('ordinal-final')?32:16),cellHeight-(grid.classList.contains('ordinal-final')?82:16));
+      grid.style.setProperty('--face-size',`${Math.max(24,face)}px`);
+      grid.style.setProperty('--hint-face-size',`${Math.max(16,Math.min(face,cellHeight-54))}px`);
+      grid.style.setProperty('--dot-size',`${Math.max(16,Math.min(114,cellWidth-20,cellHeight-18))}px`);
+    }
+    for(const panel of $$('.live-message,.camera-cue')){
+      if(!panel.getClientRects().length)continue;
+      panel.style.fontSize='';
+      let size=parseFloat(getComputedStyle(panel).fontSize);
+      while(size>16&&(panel.scrollHeight>panel.clientHeight+1||panel.scrollWidth>panel.clientWidth+1)){
+        size-=1;panel.style.fontSize=`${size}px`;
+      }
+    }
+  }
 
   function loadSettings(){ try{return {...DEFAULTS,...JSON.parse(localStorage.getItem('busMathSettings')||'{}')}}catch{return {...DEFAULTS}} }
   function saveSettings(){ localStorage.setItem('busMathSettings',JSON.stringify(state.settings)); }
@@ -99,9 +158,9 @@
   function saveRecords(records){ localStorage.setItem('busMathRecords',JSON.stringify(records.slice(-500))); }
   function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
   function duration(base){ if(state.settings.reduceMotion)return 20; const scale={slow:1.45,normal:1,fast:.65}[state.settings.animationSpeed]||1; return base*scale; }
-  function announce(text){ const live=$('#liveMessage'); if(!live)return; live.textContent=text;live.classList.add('show');clearTimeout(liveTimer);liveTimer=setTimeout(()=>live.classList.remove('show'),4200); }
-  function showScreen(id){ hold.cancel();$$('.screen').forEach(s=>s.classList.toggle('active',s.id===id)); $('#homeBtn').classList.toggle('hidden',id==='menuScreen'); $('#teacherBtn').classList.toggle('hidden',id==='teacherScreen'||id==='resultsScreen'); window.scrollTo(0,0); $('#main').focus({preventScroll:true}); }
-  function applyPreferences(){ document.body.dataset.theme=state.settings.theme;document.body.dataset.font=state.settings.fontSize;document.documentElement.dataset.font=state.settings.fontSize;document.body.classList.toggle('reduced-motion',state.settings.reduceMotion);voice.setRate(state.settings.speechRate);input.configure(state.settings.inputMode,state.settings.dwellTime);document.documentElement.style.setProperty('--dur',`${duration(600)}ms`); }
+  function announce(text){ const live=$('#liveMessage'); if(!live)return; live.textContent=text;live.classList.add('show');clearTimeout(liveTimer);liveTimer=setTimeout(()=>live.classList.remove('show'),4200);requestLayout(); }
+  function showScreen(id){ hold.cancel();document.body.dataset.screen=id;$$('.screen').forEach(s=>s.classList.toggle('active',s.id===id)); $('#homeBtn').classList.toggle('hidden',id==='menuScreen'); $('#teacherBtn').classList.toggle('hidden',id==='teacherScreen'||id==='resultsScreen'); window.scrollTo(0,0); $('#main').focus({preventScroll:true});requestLayout(); }
+  function applyPreferences(){ document.body.dataset.theme=state.settings.theme;document.body.dataset.font=state.settings.fontSize;document.documentElement.dataset.font=state.settings.fontSize;document.body.classList.toggle('reduced-motion',state.settings.reduceMotion);voice.setRate(state.settings.speechRate);input.configure(state.settings.inputMode,state.settings.dwellTime);document.documentElement.style.setProperty('--dur',`${duration(600)}ms`);requestLayout(); }
 
   function beginGame(mode,difficulty){
     state.settings.mode=mode;state.settings.difficulty=difficulty;saveSettings();applyPreferences();state.round=0;state.records=[];showScreen('gameScreen');nextRound();
@@ -112,7 +171,7 @@
     $('#roundProgress').textContent=`第 ${state.round} / ${state.settings.rounds} 題`;$('#nextRoundPanel').classList.add('hidden');$('#busWrap').className='bus-wrap door-open';
     input.bind($('#repeatBtn'),()=>repeatPrompt());
     if(state.settings.mode==='cardinal') await setupCardinal(); else await setupOrdinal();
-    input.setLocked(false);
+    fitScreenToViewport();input.setLocked(false);
   }
 
   function makePassenger(index, options={}){
@@ -150,7 +209,7 @@
   }
   function setupOrdinalHard(){
     const grid=$('#passengerGrid');grid.className='passenger-grid dot-grid';const total=state.target<=10?10:20;
-    for(let i=1;i<=total;i++){const b=document.createElement('button');b.type='button';b.className='dot-target';b.dataset.index=i;b.setAttribute('aria-label',`由左開始，位置${i}`);b.innerHTML='<span class="dot" aria-hidden="true"></span>';grid.appendChild(b);input.bind(b,()=>selectOrdinal(i,b));}
+    for(let i=1;i<=total;i++){const b=document.createElement('button');b.type='button';b.className='dot-target';b.dataset.index=i;b.setAttribute('aria-label',`由左開始，位置${i}`);b.innerHTML='<span class="dot" aria-hidden="true"></span>';grid.appendChild(b);input.bind(b,()=>selectOrdinal(i,b));}requestLayout();
   }
   function consecutiveOrdinalCandidates(target,total=20){
     // Vary the answer's position while keeping every candidate adjacent and in range.
@@ -160,7 +219,7 @@
   async function setupOrdinalPeople(){
     const grid=$('#passengerGrid');grid.className=`passenger-grid ordinal-${state.settings.difficulty} ordinal-tour`;const cue=$('#cameraCue');cue.classList.remove('hidden');
     const total=Math.min(20,Math.max(state.settings.max,state.settings.difficulty==='easy'?2:3));
-    const all=[];for(let i=1;i<=total;i++){const p=makePassenger(i, {label:shouldShowOrdinalLabel(i)||state.settings.difficulty==='easy'});p.tabIndex=-1;p.setAttribute('aria-disabled','true');all.push(p);grid.appendChild(p);}
+    const all=[];for(let i=1;i<=total;i++){const p=makePassenger(i, {label:shouldShowOrdinalLabel(i)||state.settings.difficulty==='easy'});p.tabIndex=-1;p.setAttribute('aria-disabled','true');all.push(p);grid.appendChild(p);}requestLayout();
     const before=Math.max(0,state.target-(state.settings.difficulty==='easy'?2:3));
     await wait(state.settings.reduceMotion?20:80);
     const viewport=Math.max(320,$('#playArea').clientWidth-36),track=grid.scrollWidth,cell=track/total,focus=Math.max(1,before||state.target),focusCenter=(focus-.5)*cell,maxShift=Math.max(0,track-viewport),shift=-Math.min(maxShift,Math.max(0,focusCenter-viewport*.55));
@@ -176,7 +235,7 @@
       candidates=consecutiveOrdinalCandidates(state.target,total);
     }
     grid.classList.add('tour-fade');await wait(state.settings.reduceMotion?10:300);cue.classList.add('hidden');grid.className=`passenger-grid ordinal-${state.settings.difficulty} ordinal-final`;grid.style.cssText=`--candidate-count:${candidates.length}`;
-    state.ordinalCandidates=candidates;all.forEach((p,i)=>{p.classList.toggle('inactive',!candidates.includes(i+1));if(candidates.includes(i+1)){p.tabIndex=0;p.removeAttribute('aria-disabled');input.bind(p,()=>selectOrdinal(i+1,p));}});
+    state.ordinalCandidates=candidates;all.forEach((p,i)=>{p.classList.toggle('inactive',!candidates.includes(i+1));if(candidates.includes(i+1)){p.tabIndex=0;p.removeAttribute('aria-disabled');input.bind(p,()=>selectOrdinal(i+1,p));}});requestLayout();
   }
   async function selectOrdinal(index,el){
     if(state.busy)return;if(state.firstChoice===null)state.firstChoice=index;
@@ -210,10 +269,19 @@
   function updateSpeechOutput(){const v=Number($('#speechRate').value);$('#speechOutput').value=v<.75?'慢':v>.9?'較快':'正常';}
   function openTeacher(){input.clear($('#gameScreen'));voice.cancel();fillSettingsForm();showScreen('teacherScreen');input.configure($('#settingsForm').elements.inputMode.value,Number($('#dwellTime').value));input.bind($('#dwellTest'),()=>{announce('注視成功！');voice.say('注視成功！');});}
 
-  function renderResults(){
+  function renderResults(resetPage=true){
     const all=loadRecords();const cats=[['按數取量 1–10','cardinal','1–10'],['按數取量 11–20','cardinal','11–20'],['序數 1–10','ordinal','1–10'],['序數 11–20','ordinal','11–20']];
     $('#summaryCards').innerHTML=cats.map(([label,mode,band])=>{const rows=all.filter(r=>r.mode===mode&&r.band===band);const independent=rows.filter(r=>r.firstCorrect).length;const hinted=rows.filter(r=>r.completedAfterHint).length;return `<div class="summary-card"><span>${label}</span><strong>${independent} / ${rows.length}</strong><small>首次獨立正確 · 提示後完成 ${hinted}</small></div>`}).join('');
-    $('#resultsBody').innerHTML=all.length?all.slice().reverse().map(r=>`<tr><td>${new Date(r.date).toLocaleString('zh-HK')}</td><td>${r.mode==='cardinal'?'按數取量':'序數'}／${{easy:'簡單',normal:'普通',hard:'困難'}[r.difficulty]}</td><td>${r.band}</td><td>${r.target}</td><td>${r.firstChoice??'—'}</td><td>${r.firstCorrect?'首次正確':'提示後完成'}</td><td>${r.usedHint?'是':'否'}</td></tr>`).join(''):'<tr><td colspan="7">未有學習紀錄</td></tr>';
+    if(resetPage)recordPage=0;
+    recordPage=clamp(recordPage,0,Math.max(0,all.length-1));
+    const r=all[all.length-1-recordPage];
+    $('#resultsBody').innerHTML=r?`<dl class="record-detail"><div class="record-date"><dt>日期</dt><dd>${new Date(r.date).toLocaleString('zh-HK')}</dd></div><div><dt>模式／難度</dt><dd>${r.mode==='cardinal'?'按數取量':'序數'}／${{easy:'簡單',normal:'普通',hard:'困難'}[r.difficulty]}</dd></div><div><dt>範圍</dt><dd>${r.band}</dd></div><div><dt>目標</dt><dd>${r.target}</dd></div><div><dt>首次選擇</dt><dd>${r.firstChoice??'—'}</dd></div><div><dt>結果</dt><dd>${r.firstCorrect?'首次正確':'提示後完成'}</dd></div><div><dt>使用提示</dt><dd>${r.usedHint?'是':'否'}</dd></div></dl>`:'<p class="record-empty">未有學習紀錄</p>';
+    $('#recordPageStatus').value=all.length?`${recordPage+1} / ${all.length}`:'0 / 0';
+    $('#recordPrevBtn').disabled=recordPage===0;
+    $('#recordNextBtn').disabled=recordPage>=all.length-1;
+    input.bind($('#recordPrevBtn'),()=>{if(recordPage>0){recordPage--;renderResults(false);}});
+    input.bind($('#recordNextBtn'),()=>{if(recordPage<all.length-1){recordPage++;renderResults(false);}});
+    requestLayout();
   }
   function exportCsv(){const rows=loadRecords();const head=['日期','模式','難度','範圍','目標','首次選擇','首次獨立正確','提示後完成','使用提示'];const body=rows.map(r=>[r.date,r.mode,r.difficulty,r.band,r.target,r.firstChoice??'',r.firstCorrect?'是':'否',r.completedAfterHint?'是':'否',r.usedHint?'是':'否']);const csv='\ufeff'+[head,...body].map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=`巴士站數學紀錄-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);}
 
@@ -227,5 +295,9 @@
   }
 
   window.__BUS_GAME__={NUMBERS,DEFAULTS,input,hold,state,beginGame,nextRound,setTarget(n){state.target=clamp(Number(n),1,20);},getRecords:loadRecords,duration,consecutiveOrdinalCandidates};
+  window.addEventListener('resize',requestLayout);
+  window.visualViewport?.addEventListener('resize',requestLayout);
+  if('ResizeObserver' in window){const observer=new ResizeObserver(requestLayout);observer.observe($('#main'));observer.observe($('.topbar'));}
+  document.fonts?.ready.then(requestLayout);
   bindStaticUI();applyPreferences();showScreen('menuScreen');
 })();

@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#06245c">
   <meta name="description" content="為香港特殊學校學生設計的按數取量及序數巴士站遊戲">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23ffd800'/%3E%3Cpath d='M9 18h46v29H9zM15 23h12v10H15zm22 0h12v10H37z' fill='%2306245c'/%3E%3Ccircle cx='19' cy='49' r='6' fill='%2306245c'/%3E%3Ccircle cx='45' cy='49' r='6' fill='%2306245c'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=20261027">
+  <link rel="stylesheet" href="styles.css?v=20261028">
+  <link rel="stylesheet" href="viewport.css?v=20261028">
   <title>巴士站數學遊戲</title>
 </head>
 <body data-theme="navy-white" data-font="large">
@@ -67,8 +68,10 @@
           </div>
           <img class="bus-stop" src="assets/bus-stop.png" alt="巴士站牌">
           <div id="passengerGrid" class="passenger-grid" role="group" aria-label="乘客選擇區"></div>
-          <div id="cameraCue" class="camera-cue hidden" aria-live="polite"><span aria-hidden="true">◉</span> 鏡頭由左至右數乘客 <b aria-hidden="true">→</b></div>
-          <div id="liveMessage" class="live-message" role="status" aria-live="polite"></div>
+          <div class="feedback-panel">
+            <div id="cameraCue" class="camera-cue hidden" aria-live="polite"><span aria-hidden="true">◉</span> 鏡頭由左至右數乘客 <b aria-hidden="true">→</b></div>
+            <div id="liveMessage" class="live-message" role="status" aria-live="polite"></div>
+          </div>
         </div>
 
         <div id="nextRoundPanel" class="next-panel hidden">
@@ -101,12 +104,19 @@
       <section id="resultsScreen" class="screen" aria-labelledby="resultsTitle">
         <div class="teacher-heading"><div><p class="eyebrow">教師專區</p><h1 id="resultsTitle">學習紀錄</h1></div><div class="result-actions"><button id="exportBtn" class="secondary-btn" type="button">下載 CSV</button><button id="clearBtn" class="danger-btn" type="button">清除紀錄</button></div></div>
         <div id="summaryCards" class="summary-grid"></div>
-        <div class="table-wrap"><table><thead><tr><th>日期</th><th>模式</th><th>範圍</th><th>目標</th><th>首次選擇</th><th>結果</th><th>使用提示</th></tr></thead><tbody id="resultsBody"></tbody></table></div>
+        <div class="record-panel" aria-label="逐題學習紀錄">
+          <div id="resultsBody" aria-live="polite"></div>
+          <div class="record-pagination" aria-label="學習紀錄翻頁">
+            <button id="recordPrevBtn" class="secondary-btn" type="button">← 上一筆</button>
+            <output id="recordPageStatus">0 / 0</output>
+            <button id="recordNextBtn" class="secondary-btn" type="button">下一筆 →</button>
+          </div>
+        </div>
         <button id="resultsBackBtn" class="primary-btn" type="button">返回設定</button>
       </section>
     </main>
   </div>
   <template id="dwellRingTemplate"><span class="dwell-ring" aria-hidden="true"><svg viewBox="0 0 44 44"><circle class="ring-track" cx="22" cy="22" r="18"></circle><circle class="ring-progress" cx="22" cy="22" r="18"></circle></svg></span></template>
-  <script src="app.js?v=20261027"></script>
+  <script src="app.js?v=20261028"></script>
 </body>
 </html>
